@@ -1,0 +1,73 @@
+// To Do chance to spawn axtor.
+				// To Do Spawn with x rand
+				PlaySoundAbility();
+				PlayAnimAbility(1.0f);
+
+				ManaComponent->ChangeShieldValue(-AbilitySettings.ManaCost);
+
+				USkeletalMeshComponent* Mesh = mainChar->GetMesh();
+				 if (Mesh)
+				 {
+					for (int i = 2; i <= AbilitySettings.NumOfAxes; i++)
+					{
+						// World Rotation 
+						FRotator MeshWorldRotation = Mesh->GetComponentRotation();
+						// World Location 
+						FVector MeshWorldLocation = Mesh->GetComponentLocation();
+						// 180 / NumOfAxes (for example 5)
+						float DivideResult = AbilitySettings.Angle / AbilitySettings.NumOfAxes;
+						// 180/ NumOfAxes * i--
+						float MultiplierResult = DivideResult * (i - 1);
+						// + 100 for Z order
+						MeshWorldRotation.Yaw = MeshWorldRotation.Yaw + MultiplierResult;
+						// MakeRotator = MakeRotator + DivideResult 
+						FRotator NewRotator = FRotator(MeshWorldRotation.Pitch, MeshWorldRotation.Yaw, MeshWorldRotation.Roll);
+						// ForwardVector 
+						FVector ForwardVector = FRotationMatrix(NewRotator).GetScaledAxis(EAxis::X);
+						// Radius
+						const float Radius = 50.0f;
+						// MultiplierVector 
+						FVector MultiplierVector = ForwardVector * Radius;
+						// Make NewVector 
+						FVector NewVector = MultiplierVector + MeshWorldLocation;
+						// Start for LineTrace
+						FVector StartVector = FVector(NewVector.X, NewVector.Y, NewVector.Z + 100);
+						//Result Vector = Forward * Radius * length (1000.0f)
+						FVector ResultVector = ForwardVector *  (Radius * 1000.0f);
+						// End for LineTrace
+						FVector EndVector = ResultVector + MeshWorldLocation;
+						// Ignore Self
+						FCollisionQueryParams CollisionParams;
+						CollisionParams.AddIgnoredActor(mainChar);
+						// Hit Result for ability with line trace
+						FHitResult HitResult;
+
+						if (GetWorld())
+						{
+							// LineTraceByChannel()
+							GetWorld()->LineTraceSingleByChannel(HitResult, StartVector, EndVector, ECollisionChannel::ECC_Visibility, CollisionParams);
+							// Spawn Transform for SpawnActor
+							FTransform SpawnTransform = FTransform(NewRotator,HitResult.TraceStart,FVector(1.0f,1.0f,1.0f));
+
+							// Spawn Actor for lines
+							FActorSpawnParameters SpawnParams;
+							SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+							SpawnParams.Owner = GetOwner();
+							SpawnParams.Instigator = UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetPawn();
+
+							AAbilitySpawnActor* SpawnActor = Cast<AAbilitySpawnActor>(GetWorld()->SpawnActor(AbilitySettings.ActorToSpawn, &SpawnTransform, SpawnParams));
+							if (SpawnActor)
+							{
+								SpawnActor->InitActor(&AbilitySettings, Actor);
+							}
+
+							if (AbilitySettings.ShowDebug)
+							{
+								// Show debug start points
+								DrawDebugPoint(GetWorld(), FVector(NewVector.X, NewVector.Y, NewVector.Z + 100), 5.0f, FColor::Red, false, 30.0f);
+								// Show start lines from start points
+								DrawDebugLine(GetWorld(), StartVector, EndVector, FColor::Orange, false, 10.0f);
+							}
+						}
+					}
+				 }
